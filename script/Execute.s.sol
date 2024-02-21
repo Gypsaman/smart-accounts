@@ -8,6 +8,7 @@ import {DeployEP} from './DeployEP.s.sol';
 import {UserOperation} from '@account-abstraction/contracts/interfaces/UserOperation.sol';
 import {SmartAccount} from '../src/SmartAccount.sol';
 import {ECDSA} from '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
+import {Deposit} from './Deposit.s.sol';
 contract Execute is Script {
 
     using ECDSA for bytes32;
@@ -24,6 +25,7 @@ contract Execute is Script {
         
         (ep,accountFactory) = epDeployer.run();
 
+
         bytes memory initCode = abi.encode(0x0);
         initCode = abi.encodePacked(address(accountFactory),abi.encodeWithSignature("createAccount(address)",owner));
 
@@ -33,42 +35,48 @@ contract Execute is Script {
         } 
         catch (bytes memory lowLevelData) {
             sender = extractGetSenderAddr(lowLevelData);
+            console.log(sender);
         }
-        if (ep.balanceOf(sender) < 1 ether) {
-            ep.depositTo{value: 10 ether}(sender);
-        }
+        
+        
+        Deposit deposit = new Deposit();
+        deposit.deposit{value: 0.3 ether}(ep,sender);
+
 
         // Check and see if account has been deployed. if not, create initCode
         if (accountFactory.accounts_created(owner) == true) {
             initCode = "";
         } 
-        console.log(sender);
         console.logBytes(initCode);
+
         // Create UserOperation for transaction
         UserOperation memory userOp = UserOperation({
             sender: sender,
             nonce: ep.getNonce(sender,0),
             initCode: initCode,
             callData: abi.encodeWithSignature("execute()"),
-            callGasLimit: 500000,
-            verificationGasLimit: 500000,
-            preVerificationGas: 50000,
-            maxFeePerGas: 50000,
-            maxPriorityFeePerGas: 50000,
+            callGasLimit: 1_500_000,
+            verificationGasLimit: 1500000,
+            preVerificationGas: 150000,
+            maxFeePerGas: 150000,
+            maxPriorityFeePerGas: 150000,
             paymasterAndData: "",
             signature: ""
         });
-        
+
         bytes32 userOpHash = ep.getUserOpHash(userOp);
         userOp.signature = getSignature(privateKey,userOpHash);
 
         UserOperation[] memory userOps = new UserOperation[](1);
         userOps[0] = userOp;
         
+        vm.startBroadcast();
         ep.handleOps(userOps,payable(owner));
+        vm.stopBroadcast();
         
-        uint count = SmartAccount(sender).count();
-        console.log(count);
+        // uint count = SmartAccount(sender).count();
+        // console.log(count);
+
     }
 
     function getSignature(uint256 privateKey,bytes32  ophash) public pure returns(bytes memory) {

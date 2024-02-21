@@ -14,19 +14,23 @@ contract DeployEPTest is Script {
     AccountFactory accountFactory;
 
     function run() public {
-         bytes memory bytecode = abi.encodePacked(type(AccountFactory).creationCode);
-        bytes32 salt = bytes32(uint256(uint160(block.chainid)));
+        //  bytes memory bytecode = abi.encodePacked(type(AccountFactory).creationCode);
+        // bytes32 salt = bytes32(uint256(uint160(block.chainid)));
 
-        address calcAddr = Create2.computeAddress(salt,keccak256(bytecode),address(0x4e59b44847b379578588920cA78FbF26c0B4956C));
+        // address calcAddr = Create2.computeAddress(salt,keccak256(bytecode),address(0x4e59b44847b379578588920cA78FbF26c0B4956C));
 
         
-        console.log('calcAddr: ', calcAddr);
+        // console.log('calcAddr: ', calcAddr);
         vm.startBroadcast();
-        AccountFactory accountFactoryAddr = new AccountFactory{salt:salt}();
-        console.log('accountFactoryAddr: ', address(accountFactoryAddr));
+        accountFactory = new AccountFactory();
+        // accountFactory = new AccountFactory{salt:salt}();
+        console.log('accountFactory: ', address(accountFactory));
+        // vm.stopBroadcast();
+        // assert(address(accountFactory) == calcAddr);
+  
+        address accountAddr = accountFactory.createAccount(address(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266));
         vm.stopBroadcast();
-        assert(address(accountFactoryAddr) == calcAddr);
-        
+        console.log('accountAddr: ', accountAddr);
     }
 
 }
